@@ -5,20 +5,60 @@ date: "Tuesday, October 21, 2014"
 output: html_document
 ---
 
-```{r}
-library(caret)
+# Sope of Analysis
+The scope of this analsys is to build a model in order to predict if a ertain weigh-lifting exercises (10 repetitions of the Unilateral Dumbbell Biceps Curl) is correctly executed or not.
+The predictors are measurements of several sensors placed at the human body during the exercise.
+
+For details, please see th original paper here: 
+http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf
+
+
+# Summary
+By using sensor data which measures the 3D movements of the body at 4 specific body locations (arm, forearm, dumbbell, belt) it is possible to predict if a exercise was done correctly or not (and which mistake has been made)
+
+Using the randomForest algorithm we get an OOB estimate for the error rate on the training data of 0.8 %. 
+
+
+
+```{r echo=F,results='hide',warning=FALSE,message=F}
+library(randomForest)
 library(dplyr)
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+
 ```
+## Data aquisition
+The raw data is accessible here http://groupware.les.inf.puc-rio.br/har.
+
+The data set contains the following information:
+
+- "classe" : the result, if the exercise was executed correctly or not. It is encoded as:
+     + A : correctly according to the specification 
+     + B : throwing the elbows to the front
+     + C : lifting the dumbbell only halfway
+     + D : lowering the dumbbell only halfway
+     + E : throwing the hips to the front
+- several values about the time of the measurement
+- raw sensor data
+- summary statistics of sensor data per time window
+
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3H3Otr2Fy
 
 
-```{r cache=TRUE,echo=FALSE}
+```{r cache=TRUE,echo=FALSE,results='hide',warning=FALSE}
 
-testing <- read.csv("./pml-testing.csv",stringsAsFactors=F) %>% select(-user_name,-cvtd_timestamp,-new_window)
+testing <- read.csv("./pml-testing.csv",stringsAsFactors=F) %>% select(-user_name,-new_window)
 testing <- as.data.frame(lapply(testing,as.numeric))
 
 
 training <- read.csv("./pml-training.csv",stringsAsFactors=F,na.strings=c("NA",""))
-training <- training %>% select(-user_name,-cvtd_timestamp,-new_window)
+training <- training %>% select(-user_name,-new_window)
 training <- training %>% mutate(classe=factor(training$classe))
 classe <- training$classe;
 training <- as.data.frame(lapply(training,as.numeric))
@@ -30,30 +70,46 @@ training$classe <- classe
 
 ## Feature selection
 
-I decided to use only the predictors with the raw sensor measurements and exclude therefore all others.
-As they are summaries per time window, they should not add anything new to teh model.
+I decided to use only the predictors with the raw sensor measurements and exclude therefore all others parameters.
+Most of the excluded varaibles are summary statistcis of the raw data.
+
+As they are summaries per time window, they should not add anything substantial new to the model.
+
+So the final feature set used for training is this:
 
 ```{r}
-predictors_to_keep <- c("classe",grep("_x$|_y$|_z$",names(training),value = T))
+predictors_to_keep <- c("classe",grep("_x$|_y$|_z$|^raw.*|num_window",names(training),value = T))
+predictors_to_keep
+```
+
+
+
+```{r echo=FALSE}
 training <- training[,predictors_to_keep]
 testing <- testing[,predictors_to_keep[-1]]
-
 ```
 
+We train then a model which is using "classe" as response. This variables encodes the outcome of the exercise with:
+
+- correct (A)
+- error made (B,C,D,E)
 
 ```{r cache=TRUE}
-training <- sample_n(training,100)
-fit <- train(classe ~ .,data=training)
+fit <- randomForest(classe ~ .,data=training)
+fit
 ```
 
-Confusion matrix:
-```{r}
-confusionMatrix(fit)
-```
+We see in the confusion matrixof the training process, that the estimated accuracy of the model for out-of-sample predictions values is about 99.2 % overall.
+An explicit cross-validation is not needed by using the random forest algorithm, as it is part of teh algorithm already.
+
 
 Prediction:
+
+The predcition of teh values from teh test data set is as following:
 ```{r}
-predict(fit$finalModel,newdata=testing)
+prediction <- predict(fit,newdata=testing)
+prediction
+pml_write_files(prediction)
 ```
 
 
