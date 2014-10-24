@@ -2,11 +2,11 @@
 title: "Predicting correctness of a weight lifting exercise from body sensor data"
 author: "Carsten Behring"
 date: "Tuesday, October 21, 2014"
-output: word_document
+output: html_document
 ---
 
 # Sope of Analysis
-The scope of this analyses is to build a model in order to predict if a certain weigh-lifting exercises (10 repetitions of the Unilateral Dumbbell Biceps Curl) is correctly executed or not.
+The scope of this analyses is to build a model with machine learning in order to predict if a certain weigh-lifting exercises (10 repetitions of the Unilateral Dumbbell Biceps Curl) is correctly executed or not.
 The predictors are measurements of several sensors placed at the human body during the exercise.
 
 For details, please see the original paper here: 
@@ -65,9 +65,6 @@ training <- training %>% mutate(classe=factor(training$classe))
 classe <- training$classe;
 training <- as.data.frame(lapply(training,as.numeric))
 training$classe <- classe                                 
-
-
-
 ```
 
 # Feature selection
@@ -89,13 +86,6 @@ I fitted as well an other model which included the timing information; so when e
 It seems that the individual body part movements "at any moment in time" are able to predict precisely, if a ongoing weight lifting exercise gets done correctly or not. Looking at summary information per window of time, does not change the accuracy.
 
 
-
-
-```{r echo=FALSE}
-training <- training[,predictors_to_keep]
-testing <- testing[,predictors_to_keep[-1]]
-```
-
 # Training of model
 
 We train then a model which is using the "classe" variable as the response to predict. This variables encodes the outcome of the exercise with:
@@ -104,6 +94,7 @@ We train then a model which is using the "classe" variable as the response to pr
 - a certain error made (B,C,D,E)
 
 ```{r cache=TRUE}
+training <- training[,predictors_to_keep]
 fit <- randomForest(classe ~ .,data=training)
 fit
 ```
@@ -128,6 +119,7 @@ of the model variables shows that the magnetometer measurements of the dumbbell 
 
 The prediction of the "classe" from the 20 cases of the test data set is as following:
 ```{r}
+testing <- testing[,predictors_to_keep[-1]]
 prediction <- predict(fit,newdata=testing)
 prediction
 ```
